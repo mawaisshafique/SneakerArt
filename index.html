@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Sneaker Art</title>
+
+    <!-- MSStart SDK -->
+    <script src="https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js"></script>
+
+    <!-- Unity build config -->
+    <script>
+        var buildUrl = "Build";
+        var config = {
+            dataUrl: buildUrl + "/sneakerArt.data.unityweb",
+            frameworkUrl: buildUrl + "/sneakerArt.framework.js.unityweb",
+            codeUrl: buildUrl + "/sneakerArt.wasm.unityweb",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "TapNation",
+            productName: "Sneaker Art",
+            productVersion: "1.0"
+        };
+        var loaderUrl = buildUrl + "/sneakerArt.loader.js";
+    </script>
+
+    <style>
+        html, body { height:100%; margin:0; background:#000; }
+        #unity-container { height:100%; display:flex; align-items:center; justify-content:center; }
+        #unity-canvas { width:100%; height:100%; outline:none; }
+    </style>
+
+    <!-- Dynamic PWA manifest will be attached to this link -->
+    <link rel="manifest" id="pwa-manifest" href="data:application/manifest+json,{}">
+</head>
+<body>
+<div id="unity-container">
+    <canvas id="unity-canvas" tabIndex="-1"></canvas>
+</div>
+
+<!-- Manifest builder + SW registration with auto icon detection -->
+<script>
+    (async () => {
+        const ICON_1920 = "icon-1920x1080.png"; // keep as png; change here if yours is jpg
+
+        async function pickIcon512() {
+            const candidates = [
+                { src: "icon-512x512.png",  type: "image/png"  },
+                { src: "icon-512x512.jpg",  type: "image/jpeg" },
+                { src: "icon-512x512.jpeg", type: "image/jpeg" }
+            ];
+            for (const c of candidates) {
+                try {
+                    const r = await fetch(c.src, { method: "HEAD", cache: "no-store" });
+                    if (r.ok) return c;
+                } catch (_) {}
+            }
+            return null; // none found
+        }
+
+        const icon512 = await pickIcon512();
+
+        // Build dynamic PWA manifest
+        const manifest = {
+            name: "Sneaker Art",
+            short_name: "Sneaker Art",
+            start_url: ".",
+            display: "standalone",
+            background_color: "#000000",
+            theme_color: "#000000",
+            ms_start_compatible: true,
+            icons: [
+                { src: ICON_1920, sizes: "1920x1080", type: "image/png" },
+                ...(icon512 ? [{ src: icon512.src, sizes: "512x512", type: icon512.type, purpose: "any maskable" }] : [])
+            ]
+        };
+
+        // Attach manifest as blob
+        const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+        const url = URL.createObjectURL(blob);
+        document.getElementById("pwa-manifest").setAttribute("href", url);
+
+        // Theme color meta
+        const theme = document.createElement("meta");
+        theme.name = "theme-color";
+        theme.content = manifest.theme_color;
+        document.head.appendChild(theme);
+
+        // Register SW; pass name/version via query string
+        if ("serviceWorker" in navigator) {
+            const v = encodeURIComponent("1.0");
+            const n = encodeURIComponent("Sneaker Art");
+            const swUrl = `service-worker.js?v=${v}&name=${n}`;
+
+            try {
+                await navigator.serviceWorker.register(swUrl, { scope: "./" });
+
+                function sendFiles() {
+                    if (!navigator.serviceWorker.controller) return;
+                    const urls = [
+                        "index.html",
+                        "msstart-ads.js",
+                        "TemplateData/style.css",
+                        ICON_1920,
+                        loaderUrl,
+                        config.dataUrl,
+                        config.frameworkUrl,
+                        config.codeUrl
+                    ];
+                    if (icon512) urls.push(icon512.src); // add whichever 512 icon exists
+                    navigator.serviceWorker.controller.postMessage({ type: "CACHE_URLS", urls });
+                }
+
+                if (navigator.serviceWorker.controller) sendFiles();
+                else navigator.serviceWorker.addEventListener("controllerchange", sendFiles, { once: true });
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+    })();
+</script>
+
+<!-- Unity loader + create instance -->
+<script src="sneakerArt.loader.js" data-build-url="Build"></script>
+<script>
+    const canvas = document.getElementById("unity-canvas");
+    createUnityInstance(canvas, config).then(instance => {
+        window.gameInstance = instance;
+        if (window.MSStartAds && MSStartAds.preload) MSStartAds.preload();
+    }).catch(console.error);
+</script>
+
+<!-- Reusable MSStart ad helpers -->
+<script src="msstart-ads.js"></script>
+</body>
+</html>
