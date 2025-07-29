@@ -8,6 +8,6 @@
   "ms_start_compatible": true,
   "icons": [
     { "src": "icon-1920x1080.png", "sizes": "1920x1080", "type": "image/png" },
-    { "src": "icon-512x512.jpg",  "sizes": "512x512",  "type": "image/jpeg", "purpose": "any maskable" }
+    { "src": "icon-512x512.png",  "sizes": "512x512",  "type": "image/png", "purpose": "any maskable" }
   ]
 }
