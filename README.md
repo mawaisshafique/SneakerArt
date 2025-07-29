@@ -1,2 +1,0 @@
-# SneakerArt
-# SneakerArt

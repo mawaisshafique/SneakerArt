@@ -1,135 +1,137 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en-us">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <title>Sneaker Art</title>
+    <!-- Template: MSStart + Unity Loading UI (OTP 1.2 style) -->
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity WebGL Player | Sneaker Art</title>
 
-    <!-- MSStart SDK -->
+    <!-- PWA manifest (real file, not a blob) -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Favicon + default Unity stylesheet (for loading bar / layout) -->
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+
+    <!-- MSStart (MSN) Games SDK -->
     <script src="https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js"></script>
 
-    <!-- Unity build config -->
-    <script>
-        var buildUrl = "Build";
-        var config = {
-            dataUrl: buildUrl + "/sneakerArt.data.unityweb",
-            frameworkUrl: buildUrl + "/sneakerArt.framework.js.unityweb",
-            codeUrl: buildUrl + "/sneakerArt.wasm.unityweb",
-            streamingAssetsUrl: "StreamingAssets",
-            companyName: "TapNation",
-            productName: "Sneaker Art",
-            productVersion: "1.0"
-        };
-        var loaderUrl = buildUrl + "/sneakerArt.loader.js";
-    </script>
-
+    <!-- Prevent scrollbars on the page itself -->
     <style>
-        html, body { height:100%; margin:0; background:#000; }
-        #unity-container { height:100%; display:flex; align-items:center; justify-content:center; }
-        #unity-canvas { width:100%; height:100%; outline:none; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
     </style>
-
-    <!-- Dynamic PWA manifest will be attached to this link -->
-    <link rel="manifest" id="pwa-manifest" href="data:application/manifest+json,{}">
 </head>
+
 <body>
-<div id="unity-container">
-    <canvas id="unity-canvas" tabIndex="-1"></canvas>
+<!-- Unity container + loading UI (from reference template) -->
+<div id="unity-container" class="unity-desktop" style="width: 100%; height: 100%; overflow-x: hidden; overflow-y: hidden;">
+    <canvas id="unity-canvas" style="width: 100%; height: 100%; cursor: default;"></canvas>
+
+    <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+            <div id="unity-progress-bar-full"></div>
+        </div>
+    </div>
 </div>
 
-<!-- Manifest builder + SW registration with auto icon detection -->
-<script>
-    (async () => {
-        const ICON_1920 = "icon-1920x1080.png"; // keep as png; change here if yours is jpg
-
-        async function pickIcon512() {
-            const candidates = [
-                { src: "icon-512x512.png",  type: "image/png"  },
-                { src: "icon-512x512.jpg",  type: "image/jpeg" },
-                { src: "icon-512x512.jpeg", type: "image/jpeg" }
-            ];
-            for (const c of candidates) {
-                try {
-                    const r = await fetch(c.src, { method: "HEAD", cache: "no-store" });
-                    if (r.ok) return c;
-                } catch (_) {}
-            }
-            return null; // none found
-        }
-
-        const icon512 = await pickIcon512();
-
-        // Build dynamic PWA manifest
-        const manifest = {
-            name: "Sneaker Art",
-            short_name: "Sneaker Art",
-            start_url: ".",
-            display: "standalone",
-            background_color: "#000000",
-            theme_color: "#000000",
-            ms_start_compatible: true,
-            icons: [
-                { src: ICON_1920, sizes: "1920x1080", type: "image/png" },
-                ...(icon512 ? [{ src: icon512.src, sizes: "512x512", type: icon512.type, purpose: "any maskable" }] : [])
-            ]
-        };
-
-        // Attach manifest as blob
-        const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
-        const url = URL.createObjectURL(blob);
-        document.getElementById("pwa-manifest").setAttribute("href", url);
-
-        // Theme color meta
-        const theme = document.createElement("meta");
-        theme.name = "theme-color";
-        theme.content = manifest.theme_color;
-        document.head.appendChild(theme);
-
-        // Register SW; pass name/version via query string
-        if ("serviceWorker" in navigator) {
-            const v = encodeURIComponent("1.0");
-            const n = encodeURIComponent("Sneaker Art");
-            const swUrl = `service-worker.js?v=${v}&name=${n}`;
-
-            try {
-                await navigator.serviceWorker.register(swUrl, { scope: "./" });
-
-                function sendFiles() {
-                    if (!navigator.serviceWorker.controller) return;
-                    const urls = [
-                        "index.html",
-                        "msstart-ads.js",
-                        "TemplateData/style.css",
-                        ICON_1920,
-                        loaderUrl,
-                        config.dataUrl,
-                        config.frameworkUrl,
-                        config.codeUrl
-                    ];
-                    if (icon512) urls.push(icon512.src); // add whichever 512 icon exists
-                    navigator.serviceWorker.controller.postMessage({ type: "CACHE_URLS", urls });
-                }
-
-                if (navigator.serviceWorker.controller) sendFiles();
-                else navigator.serviceWorker.addEventListener("controllerchange", sendFiles, { once: true });
-            } catch (e) {
-                console.warn(e);
-            }
-        }
-    })();
-</script>
-
-<!-- Unity loader + create instance -->
-<script src="sneakerArt.loader.js" data-build-url="Build"></script>
-<script>
-    const canvas = document.getElementById("unity-canvas");
-    createUnityInstance(canvas, config).then(instance => {
-        window.gameInstance = instance;
-        if (window.MSStartAds && MSStartAds.preload) MSStartAds.preload();
-    }).catch(console.error);
-</script>
-
-<!-- Reusable MSStart ad helpers -->
+<!-- Your lightweight MSStart ad helpers (must set window.gameInstance) -->
 <script src="msstart-ads.js"></script>
+
+<script>
+    /* ---------------------------- Viewport & gesture lock ---------------------------- */
+    // Match the reference: lock zooming / scaling and mark as handheld-friendly
+    document.head.insertAdjacentHTML('beforeend',
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
+    );
+    document.head.insertAdjacentHTML('beforeend',
+        '<meta name="HandheldFriendly" content="true" />'
+    );
+
+    ['gesturestart','gesturechange','gestureend'].forEach(function(evt){
+        document.addEventListener(evt, function(e){ e.preventDefault(); }, { passive:false });
+    });
+
+    /* ---------------------------- Elements & Build config ---------------------------- */
+    var container = document.getElementById('unity-container');
+    var canvas = document.getElementById('unity-canvas');
+    var loadingBar = document.getElementById('unity-loading-bar');
+    var progressBarFull = document.getElementById('unity-progress-bar-full');
+
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/sneakerArt.loader.js";
+
+    // Unity config (paths point into Build/)
+    var config = {
+        dataUrl:      buildUrl + "/sneakerArt.data.unityweb",
+        frameworkUrl: buildUrl + "/sneakerArt.framework.js.unityweb",
+        codeUrl:      buildUrl + "/sneakerArt.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName:  "TapNation",
+    productName:  "Sneaker Art",
+    productVersion: "1.0",
+    // If you want to force canvas size behavior, uncomment:
+    // matchWebGLToCanvasSize: false,
+    // devicePixelRatio: 1,
+    };
+
+    /* ---------------------------- Responsive behavior ---------------------------- */
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Extra mobile viewport for Unity guidance (like your minimal version)
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.head.appendChild(meta);
+
+        container.className = "unity-mobile";
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+
+        // Keep full size on orientation changes
+        window.addEventListener("orientationchange", function () {
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+        });
+
+        // Optional: match your earlier left-aligned body on mobile
+        document.body.style.textAlign = "left";
+    } else {
+        // Desktop: full-bleed canvas
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+    }
+
+    /* ---------------------------- Background handling ---------------------------- */
+    // Fallback to the BACKGROUND_COLOR variable (from your minimal template)
+    // BACKGROUND_COLOR is already a valid CSS color string from Unity.
+    canvas.style.background = "#000000";
+
+    /* ---------------------------- Show loading bar, load loader ---------------------------- */
+    loadingBar.style.display = "block";
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = function () {
+        // Use progress callback to drive the reference loading bar
+        createUnityInstance(canvas, config, function (progress) {
+            progressBarFull.style.width = (progress * 100) + "%";
+        }).then(function (instance) {
+            loadingBar.style.display = "none";
+
+            // Expose instance for msstart-ads.js (SendMessage, etc.)
+            window.gameInstance = instance;
+
+            // Preload Interstitial + Rewarded once Unity is ready (your original behavior)
+            if (window.MSStartAds && typeof MSStartAds.preload === 'function') {
+                MSStartAds.preload();
+            }
+        }).catch(function (message) {
+            // Keep alert for parity with reference, plus console
+            console.error(message);
+            alert(message);
+        });
+    };
+    document.body.appendChild(script);
+</script>
 </body>
 </html>
